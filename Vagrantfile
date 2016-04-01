@@ -5,6 +5,8 @@ require 'fileutils'
 
 Vagrant.require_version ">= 1.6.0"
 
+ENV["VAGRANT_DETECTED_OS"] = ENV["VAGRANT_DETECTED_OS"].to_s + " cygwin"
+
 CLOUD_CONFIG_PATH = File.join(File.dirname(__FILE__), "user-data")
 CONFIG = File.join(File.dirname(__FILE__), "config.rb")
 
@@ -18,7 +20,6 @@ $share_home = false
 $vm_gui = false
 $vm_memory = 1024
 $vm_cpus = 1
-$shared_folders = {}
 $forwarded_ports = {}
 
 # Attempt to apply the deprecated environment variable NUM_INSTANCES to
@@ -125,8 +126,17 @@ Vagrant.configure("2") do |config|
 
       # Uncomment below to enable NFS for sharing the host machine into the coreos-vagrant VM.
       #config.vm.synced_folder ".", "/home/core/share", id: "core", :nfs => true, :mount_options => ['nolock,vers=3,udp']
+      
+	  #default share folder 
+	  #config.vm.synced_folder ".", "/home/core/share", id: "core", type: "rsync", rsync__auto: "true"
+	  
+	  #configure synchronize folders shared vm specific folders
       $shared_folders.each_with_index do |(host_folder, guest_folder), index|
-        config.vm.synced_folder host_folder.to_s, guest_folder.to_s, id: "core-share%02d" % index, nfs: true, mount_options: ['nolock,vers=3,udp']
+        if Vagrant::Util::Platform.windows?
+          config.vm.synced_folder (host_folder).to_s, guest_folder.to_s, id: "core-share_global" % index, type: "rsync", rsync__auto: "true"
+        else
+          config.vm.synced_folder (host_folder).to_s, guest_folder.to_s, id: "core-share_global" % index, nfs: true, mount_options: ['nolock,vers=3,udp']
+        end
       end
 
       if $share_home
